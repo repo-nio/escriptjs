@@ -5,7 +5,7 @@
 	Dependencies: 	NixxisClientScript.js
 	Author: 		Nixxis Indian Ocean
 	Version: 		v2.5
-	Last Update: 	2023-07-07
+	Last Update: 	2024-07-07
 
 	
 ******************************************************************************************************
