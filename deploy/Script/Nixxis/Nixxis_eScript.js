@@ -1,11 +1,11 @@
 /*******************************************************************************************************
 	E-Script X Integration Script
 	
-	Description: 	This script is designed to integrate Nixxis Contact Suite 2.4.x/3.x with Seeasoftware's E-Script X script editor
+	Description: 	This script is designed to integrate Nixxis Contact Suite 2.4.x/3.x with Seeasoftware's e-Scriptx script editor
 	Dependencies: 	NixxisClientScript.js
-	Author: 		Nixxis Indian Ocean
-	Version: 		v2.6.3
-	Last Update: 	2025-05-21
+	Author: 		Nixxis Integration Team
+	Version: 		v2.6.4
+	Last Update: 	2025-06-26
 	
 ******************************************************************************************************
 	
@@ -28,6 +28,7 @@
 		NixxisScript.Common.NixxisInit()
 		NixxisScript.Common.CreateRecord(hasActivityId,activityId)
 		NixxisScript.Common.CreateContextData(campaignId,ContextData)
+		NixxisScript.Common.UpdateContextData(ContextData)
 		NixxisScript.Common.SetInternalId()
 		NixxisScript.Common.CloseScript()
 		NixxisScript.Common.CloseScriptGoReady()
@@ -59,79 +60,60 @@ var NixxisScript = {
 	host: null,
 
 	LoadConfig: function (callback) {
-		$.getJSON('Nixxis/nixxis.config.json', function (config) {
-			NixxisScript.appURI = config.appURI;
-			NixxisScript.dataURI = config.dataURI;
-			NixxisScript.host = config.host;
-			if (typeof callback === 'function') callback();
-		}).fail(function (jqxhr, textStatus, error) {
-			var err = textStatus + ", " + error;
-			console.error("Failed to load config: " + err);
-			if (typeof callback === 'function') callback(err);
-		});
+		fetch('Nixxis/nixxis.config.json')
+			.then(response => {
+				if (!response.ok) {
+					throw new Error(`HTTP error! status: ${response.status}`);
+				}
+				return response.json();
+			})
+			.then(config => {
+				NixxisScript.appURI = config.appURI;
+				NixxisScript.dataURI = config.dataURI;
+				NixxisScript.host = config.host;
+				if (typeof callback === 'function') callback();
+			})
+			.catch(error => {
+				console.error("Failed to load config:", error);
+				if (typeof callback === 'function') callback(error);
+			});
 	},
 
 	LastError: null,
 
-	Version: "2.6.3",
+	Version: "2.6.4",
 
 	//Common
 
 	PrintNcsVar: function () {
-
 		return 'Activity : ' + window.external.Activity + '\n' +
-
 			'AgentDescription : ' + window.external.AgentDescription + '\n' +
-
 			'ContactId : ' + window.external.ContactId + '\n' +
-
 			'Context : ' + window.external.Context + '\n' +
-
 			'Extension : ' + window.external.Extension + '\n' +
-
 			'From : ' + window.external.From + '\n' +
-
 			'Media : ' + window.external.Media + '\n' +
-
 			'Direction : ' + window.external.GetSessionValue('@Direction') + '\n' +
-
 			'PauseDescription : ' + window.external.PauseDescription + '\n' +
-
 			'PauseId : ' + window.external.PauseId + '\n' +
-
 			'Queue : ' + window.external.Queue + '\n' +
-
 			'ScriptParams : ' + window.external.ScriptParams + '\n' +
-
 			'State : ' + window.external.State + '\n' +
-
 			'StateDescription : ' + window.external.StateDescription + '\n' +
-
 			'To : ' + window.external.To + '\n' +
-
 			'UserAccount : ' + window.external.UserAccount + '\n' +
-
 			'UserName : ' + window.external.UserName + '\n' +
-
 			'UUI : ' + window.external.UUI + '\n' +
-
 			'WaitForCall : ' + window.external.WaitForCall + '\n' +
-
 			'WaitForChat : ' + window.external.WaitForChat + '\n' +
-
 			'WaitForMail : ' + window.external.WaitForMail + '\n' +
-
 			'ContactListId : ' + window.external.GetSessionValue('@ContactListId') + '\n' +
-
 			'CustomerId : ' + window.external.GetSessionValue('@CustomerId') + '\n' +
-
 			'RecordingId : ' + window.external.GetSessionValue('@RecordingId') + '\n';
-
 	},
 
 	//VoiceControls
 	Voice: {
-
 		/**
 		 * 	New Call
 		 *	@params	:	string	destination			The phonenumber/destination to call
@@ -149,9 +131,7 @@ var NixxisScript = {
 				NixxisContactLink.commands.voicenewcall(destination);
 				return true;
 			}
-
 		},
-
 
 		/**
 		 * 	Redial
@@ -159,33 +139,18 @@ var NixxisScript = {
 		 *			
 		**/
 		Redial: /** boolean */ function (destination) {
-
 			try {
-
 				//this will call the m_CInfo.Redial function
-
-				window.external.redial(
-
-					destination,
-
-					window.external.GetSessionValue('@ContactListId'),
-
-					window.external.Activity);
-
-
-
 				//window.external.redial(destination);//this does nothing
-
+				window.external.redial(
+					destination,
+					window.external.GetSessionValue('@ContactListId'),
+					window.external.Activity);
 				return true;
-
 			} catch (e) {
-
 				this.LastError = "Redial : " + e;
-
 				return false;
-
 			}
-
 		},
 
 
@@ -195,38 +160,24 @@ var NixxisScript = {
 		 *			
 		**/
 		Hangup: function () {
-
 			try {
-
 				window.external.voicehangup();
-
 			} catch (e) {
-
 				this.LastError = "Hold : " + e;
-
 			}
-
 		},
-
 
 		/**
 		 * 	Hold
 		 *			
 		**/
 		Hold: function () {
-
 			try {
-
 				window.external.voicehold();
-
 			} catch (e) {
-
 				this.LastError = "Hold : " + e;
-
 			}
-
 		},
-
 
 		/**
 		 * 	Transfer or Forward the call
@@ -235,35 +186,20 @@ var NixxisScript = {
 		*	@return	:	bool						False for Error			
 		**/
 		TransferForward: /** boolean */ function (isForward, destination) {
-
 			try {
-
 				if (!isForward) {
-
 					window.external.voicetransfer();
-
 					return true;
-
 				}
-
 				else {
-
 					window.external.voiceforward(destination);
-
 					return true;
-
 				}
-
 			} catch (e) {
-
 				this.LastError = "TransferForward : " + e;
-
 				return false;
-
 			}
-
 		},
-
 
 		/**
 		 * 	Send DTMF
@@ -271,331 +207,182 @@ var NixxisScript = {
 		 *			
 		**/
 		SendDTMF: function (DTMF) {
-
 			try {
-
 				window.external.executeCommand('~senddtmf', DTMF);
-
 			} catch (e) {
-
 				this.LastError = "SendDTMF : " + e;
-
 			}
-
 		},
-
 
 		/**
 		 * 	Start Recording
 		 *			
 		**/
 		StartRecording: function () {
-
 			try {
-
 				var contactID = window.external.GetSessionValue('@ContactId');
-
 				window.external.executeCommand(19, 'True', contactID);
-
 				return (true);
-
 			} catch (e) {
-
 				this.LastError = "StartRecording : " + e;
 				return (false);
-
 			}
-
 		},
-
 
 		/**
 		 * 	Stop Recording 
 		 *			
 		**/
 		StopRecording: function () {
-
 			try {
-
 				var contactID = window.external.GetSessionValue('@ContactId');
-
 				window.external.executeCommand(19, 'False', contactID);
-
 				return (true);
-
 			} catch (e) {
-
 				this.LastError = "StopRecording : " + e;
 				return (false);
-
 			}
-
 		}
-
 	},
 
 	//Qualifications
 	Qualifications: {
-
 		/**
-	
 		 * Get Qualification
-	
 		 * @param {boolean} hasActivityId : Choice to provide activityId
-	
 		 *     for the list of qualifications or load qualifications for 
-	
 		 *     the current activity -> this parameter should be removed.
-	
 		 * @param {string} activityId : The GUID of the activity
-	
 		 *     for the list of qualifications
-	
 		 * @param {boolean} allQualification : Display all qualifications
-	
 		 * @param {boolean} isPositive : Display positive qualifications
-	
 		 * @param {boolean} isNeutral : Display Neutral qualifications
-	
 		 * @param {boolean} isNegative : Display Negative qualifications
-	
 		 * @param {boolean} isArgued : Display Argued qualifications
-	
 		 * @param {boolean} isCallback : Display Callback qualifications
-	
 		 * @return {string} : Qualifications list formatted in Json with fields :
-	
 		 *   QualificationId
-	
 		 *   Description
-	
 		 *   Action (enum string)
-	
 		 *   Argued (enum string)
-	
 		 *   Value
-	
 		 */
 
 		GetQualification: function (
-
 			hasActivityId,
-
 			activityId,
-
 			allQualification,
-
 			isPositive,
-
 			isNeutral,
-
 			isNegative,
-
 			isArgued,
-
 			/** we are missing includeNotArgued param here */
-
 			isCallback) {
-
 			/**
-  	
 			 * window.external.GetQualifications(
-  	
 			 *    bool includePositive,
-  	
 			 *    bool includeNegative,
-  	
 			 *    bool includeNeutral,
-  	
 			 *    bool includeArgued,
-  	
 			 *    bool includeNotArgued)
-  	
 			 * returns a string containing the list of qualifications
-  	
 			 * (without the nodes) in the form :
-  	
 			 * GUID;Description;Action;Argued;Value;0
-  	
 			 * Where :
-  	
 			 * GUID = id of the qualification 
-  	
 			 * Description = Description
-  	
 			 * Action = see EnumQualificationActions:
-  	
 			 *  Id	Description
-  	
 			 *  0 None
-  	
 			 *  1 Do not retry
-  	
 			 *  2 Retry at
-  	
 			 *  3 Retry not before
-  	
 			 *  4 Callback
-  	
 			 *  5 Targeted callback
-  	
 			 *  6 Activity change
-  	
 			 *  7 Black list
-  	
 			 * Argued : boolean
-  	
 			 * Value :
-  	
 			 *  1 Positive
-  	
 			 *  0 Neutral
-  	
 			 *  -1 Negative
-  	
 			 * 0 : end line delimiter
-  	
 			 *
-  	
 			 * This one returns the nodes and qualifs ... not used here.	
-  	
 			 * window.external.executeCommand(
-  	
 			 *    '~getinfo',
-  	
 			 *    1,
-  	
 			 *    "ef7e3357b7a44240a9538b670cd30598");
-  	
 			 */
 
-
-
 			/**
-  	
 			 * Types of Action.
-  	
 			 * @enum {integer}
-  	
 			 */
 
 			const Actions = {
-
 				0: 'None',
-
 				1: 'Do not retry',
-
 				2: 'Retry at',
-
 				3: 'Retry not before',
-
 				4: 'Callback',
-
 				5: 'Targeted callback',
-
 				6: 'Activity change',
-
 				7: 'Black list'
-
 			};
 
-
-
 			/**
-  	
 			 * Types of Argued.
-  	
 			 * @enum {string}
-  	
 			 */
-
 			// v2.2f - Correction : 	Values are bypassed because if custom value is used text is not displayed
 			// 						Int will be displayed instead
 			/*
 			const Values = {
-  	
 			  '-1': 'Negative',
-  	
 			  '0': 'Neutral',
-  	
 			  '1': 'Positive'
-  	
 			};
 			*/
 
-
-
 			try {
-
 				let includePositive = includeNegative = includeNeutral =
-
 					includeArgued = includeNotArgued = false;
-
-
 				// v2.2f - Correction 	: Added includeArgued if isPositive, isNeutral, isNegative
-
 				// v2.2f - Known issues :
 				// 							isArgued must not be used
 				// 							isCallback is to be used alone
-
 				if (isPositive) includePositive = includeArgued = true;
-
 				if (isNeutral) includeNeutral = includeArgued = true;
-
 				if (isNegative) includeNegative = includeArgued = true;
-
 				if (isArgued) includeArgued = true;
-
 				if (allQualification) {
-
 					includePositive = includeNegative = includeNeutral =
-
 						includeArgued = includeNotArgued = true;
-
 				}
-
 				// We don't have an input parameter for this ...
-
 				// We take everything and it will be filtered in the end.
-
 				if (!allQualification && isCallback) {
-
 					includePositive = includeNegative = includeNeutral =
-
 						includeArgued = includeNotArgued = true;
-
 				}
-
-
 
 				let s = '';
-
 				s = window.external.GetQualifications(
-
 					includePositive,
-
 					includeNegative,
-
 					includeNeutral,
-
 					includeArgued,
-
 					true);
-
-
 
 				//s = window.external.GetQualifications(true,false,false,false,true);
 
 				if (s == "") {
-
 					return "No Qualifications";
-
 				}
 
 				else {
-
 					//return s;
-
 					let quals = [];
 					// Split the string into lines first
 					let lines = s.split('\r\n').filter(line => line.trim() !== '');
@@ -614,129 +401,73 @@ var NixxisScript = {
 					}
 
 					//Filtering for isCallback option					
-
 					if (allQualification) {
-
 						return quals;
-
 					}
 
 					else {
-
 						if (isCallback) {
-
 							let filteredQuals = [];
-
 							for (let i = 0; i < quals.length; i++) {
-
 								if (quals[i].Action == Actions["4"] || quals[i].Action == Actions["5"]) {
-
 									filteredQuals.push(quals[i]);
-
 								}
-
 							}
 
 							return filteredQuals;
-
 						}
-
 						else {
-
 							let filteredQuals = [];
-
 							for (let i = 0; i < quals.length; i++) {
-
 								if (quals[i].Action != Actions["4"] || quals[i].Action != Actions["5"]) {
-
 									filteredQuals.push(quals[i]);
-
 								}
-
 							}
-
 							return filteredQuals;
-
 						}
-
 					}
-
 				}
-
 			} catch (e) {
 
 				this.LastError = "GetQualification : " + e;
-
 			}
-
 		},
 
-
-
 		/**
-	
 		 * Set Qualification
-	
 		 * @param {string} qualificationId : The GUID or the short code or
-	
 		 *    the custom value of the qualification.
-	
 		 * @param {string} callbackDate : The date output from a calendar object.
-	
 		 * @param {string} callbackTime : The time output from a time object.
-	
 		 * @param {string} callbackPhone : The phonenumber / 
-	
 		 *    destination of the record.
-	
 		 * @param {boolean} isCallback : Determines if the qualification is a 
-	
 		 *    normal qualification or a callback.
-	
 		 * @return {boolean} : True for qualification executed and False for Error.
-	
 		 */
 
 		SetQualification: function (
-
 			qualification,
-
 			callbackDate,
-
 			callbackTime,
-
 			callbackPhone,
-
 			isCallback) {
 
 			if (callbackPhone == '' || typeof (callbackPhone) == 'undefined' || callbackPhone == 'undefined') {
-
 				try {
-
 					const direction = window.external.GetSessionValue('@Direction');
-
 					if (direction == 'I') {
-
 						callbackPhone = window.external.From;
-
 					}
-
 					else {
-
 						callbackPhone = window.external.To;
-
 					}
-
 				}
 
 				catch (e) {
-
 					this.LastError = "SetQualification : " + e;
-
 					return false;
-
 				}
-
 			};
 
 
@@ -752,114 +483,70 @@ var NixxisScript = {
 
 			};
 
-
 			if (isCallback == true) {
-
 				let DateCallback = callbackDate;
-
 				let TimeCallback = callbackTime;
-
 				let yyyy, MM, dd, HH, mm, DateTime;
 
-
 				if (DateCallback == '' || TimeCallback == '') {
-
 					alert('qualificationId : ' + qualification + '\n' +
 						'isCallback : ' + isCallback + '\n' +
 						'callbackDate : ' + callbackDate + '\n' +
 						'callbackTime : ' + callbackTime + '\n' +
 						'callbackPhone : ' + callbackPhone + '\n'
 					);
-
 					return false;
-
 				}
-
 				else {
-
 					//Get DateTime Info
-
 					DateCallback = new Date(DateCallback);
-
 					yyyy = DateCallback.getFullYear();
-
 					MM = DateCallback.getMonth() + 1;
-
 					dd = DateCallback.getDate();
-
 					TimeCallback = TimeCallback.split(':');
-
 					HH = TimeCallback[0];
-
 					mm = TimeCallback[1];
 
-
 					//Convert to string
-
 					yyyy = yyyy.toString();
-
 					MM = MM.toString();
-
 					dd = dd.toString();
-
 					HH = HH.toString();
-
 					mm = mm.toString();
 
 					//checking length
-
 					if (dd.length == '1') dd = '0' + dd;
-
 					if (MM.length == '1') {
-
 						MM = '0' + MM;
-
 					}
-
 					DateTime = yyyy + MM + dd + HH + mm;
-
 					window.external.SetQualification(qualification, DateTime, callbackPhone);
-
 				}
-
 			}
-
 			else {
-
 				window.external.SetQualification(qualification, "", callbackPhone);
-
 			};
-
 			return true;
-
 		}
-
 	},
-
-
 
 	//General Commands
 	Common: {
-
 		/**
 		 * 	Nixxis Init - Initialises NixxisContactLink and basic information, Determines if there is a record linked to the contact.
 		 *	@return	:	bool	True for KEY_PLUGIN/ContactListId found and False for KEY_PLUGIN/ContactListId not found 	
 		**/
 		NixxisInit: function () {
-
 			NixxisScript.LoadConfig(function (err) {
 				if (!err) {
 					// NixxisScript.appURI, dataURI, host updated
-				} else {
+				}
+				else {
 					alert("Failed to load configuration.");
 				}
 			});
 
 			NixxisScript.KEY_PLUGIN = _Act_Manager.Prepare.getGlobal('KEY_PLUGIN');
-			/*NixxisScript.dataURI = _Act_Manager.Prepare.getGlobal('NixxisDataURI');
-			NixxisScript.appURI = _Act_Manager.Prepare.getGlobal('NixxisApp');
-			NixxisScript.host = _Act_Manager.Prepare.getGlobal('NixxisHost');*/
-
 
 			NixxisContactLink.Init();
 
@@ -936,8 +623,8 @@ var NixxisScript = {
 				var vLanguage = window.external.GetSessionValue('@Language');
 				_Pr._S.GlbVar['NixxisVar_Language'] = { value: vLanguage, type: 'String' };
 
-			} catch (e) { }
-
+			} 
+			catch (e) {}
 
 			try {
 				if ((NixxisScript.dataURI == '' || typeof (NixxisScript.dataURI) == 'undefined' || NixxisScript.dataURI == 'undefined') && (NixxisScript.host == '' || typeof (NixxisScript.host) == 'undefined' || NixxisScript.host == 'undefined') && (NixxisScript.appURI == '' || typeof (NixxisScript.appURI) == 'undefined' || NixxisScript.appURI == 'undefined')) throw "Missing App Server Address";
@@ -955,9 +642,7 @@ var NixxisScript = {
 
 			if (((ContactListId == '' || typeof (ContactListId) == 'undefined' || ContactListId == 'undefined') || (NixxisScript.KEY_PLUGIN == '' || typeof (NixxisScript.KEY_PLUGIN) == 'undefined' || NixxisScript.KEY_PLUGIN == 'undefined'))) { return false; }
 			else { return true; }
-
 		},
-
 
 		/**
 		 * 	Create New Record
@@ -966,19 +651,14 @@ var NixxisScript = {
 		 *	@return	:	bool						True for executed properly and False for Error			
 		**/
 		CreateRecord: function (hasActivityId, activityId) {
-
 			var contactRef, activityId_;
-
 			var baseUri = NixxisScript.dataURI;
-
 			if (!hasActivityId) {
 				activityId_ = window.external.Activity;
 			};
-
 			if (hasActivityId && (activityId != '' || typeof (activityId) != 'undefined' || activityId != 'undefined')) {
 				activityId_ = activityId;
 			};
-
 			if ((activityId_ != '' || typeof (activityId_) != 'undefined' || activityId_ != 'undefined')) {
 				var uri = "" + baseUri + "?action=createContextData&activity=" + activityId_ + "";
 				//alert(uri);
@@ -1004,14 +684,11 @@ var NixxisScript = {
 					alert(message);
 					return false;
 				});
-
 				return true;
 			}
-
 			else {
 				return false;
 			}
-
 		},
 
 		/**
@@ -1019,14 +696,12 @@ var NixxisScript = {
 		 *	@params	:	Guid	campaignId		The GUID of the campaign
 						string	ContextData		<campaigndata><userfield1>UserData1</userfield1></campaigndata><systemdata><systemfield1>SystemData1</systemfield1></systemdata>
 		 *	@return	:	bool					True for executed properly and False for Error
+		 * 	Usage	:	const CreateContextData = NixxisScript.Common.CreateContextData('campaignId', `<campaigndata><userfield1>UserData1</userfield1></campaigndata><systemdata><systemfield1>SystemData1</systemfield1></systemdata>`);
+		 * 				return CreateContextData;
 		**/
-
 		CreateContextData: function (campaignId, ContextData) {
-
 			var campaignId, ContextData;
-
 			var baseUri = NixxisScript.dataURI;
-
 			if ((campaignId != '' || typeof (campaignId) != 'undefined' || campaignId != 'undefined' || ContextData != '' || typeof (ContextData) != 'undefined' || ContextData != 'undefined')) {
 				var uri = "" + baseUri + "?action=CreateContextData&context=" + campaignId + "";
 				var data = "<contextdata>" + ContextData + "</contextdata>";
@@ -1071,32 +746,64 @@ var NixxisScript = {
 		},
 
 		/**
+		 * 	Update Record using ContextData
+		 *	@params	:	string ContextData		<campaigndata><userfield1>UserData1</userfield1></campaigndata><systemdata><systemfield1>SystemData1</systemfield1></systemdata>
+		 *	@return	:	bool					True for executed properly and False for Error
+		 * 	Usage	:	const UpdateContextData = NixxisScript.Common.UpdateContextData(`<campaigndata><userfield1>UserData1</userfield1></campaigndata><systemdata><systemfield1>SystemData1</systemfield1></systemdata>`);
+		 * 				return UpdateContextData;
+		**/
+		UpdateContextData: function (ContextData) {
+			var ContextData;
+			var ContactId = window.external.GetSessionValue('@ContactId');
+			var baseUri = NixxisScript.dataURI;
+			if ((ContactId != '' || typeof (ContactId) != 'undefined' || ContactId != 'undefined' || ContextData != '' || typeof (ContextData) != 'undefined' || ContextData != 'undefined')) {
+				var uri = "" + baseUri + "?action=UpdateContextData&contact=" + ContactId + "";
+				var data = "<contextdata>" + ContextData + "</contextdata>";
+				var settings = {
+					"url": uri,
+					"method": "POST",
+					"timeout": 0,
+					"headers": {
+						"Content-Type": "application/xml"
+					},
+					"data": data,
+				};
+				$.ajax(settings).done(function (xml) {
+
+					return true;
+
+				}).fail(function (msg) {
+					var message = "Error while processing request no records updated: " + msg.status + ", " + msg.statusText;
+					console.log(message);
+					return false;
+				});
+
+				return true;
+			}
+			else {
+				return false;
+			}
+		},
+
+		/**
 		 * 	Set InternalID -  Links the ContactListId to the ContactID
 		 *	@return	:	bool						True for executed properly and False for Error			
 		**/
 		SetInternalId: function () {
-
 			NixxisScript.KEY_PLUGIN = _Act_Manager.Prepare.getGlobal('KEY_PLUGIN');
 			var contactRef = NixxisScript.KEY_PLUGIN;
-
 			var baseUri = NixxisScript.dataURI;
 			var contactID = window.external.GetSessionValue('@ContactId');
 
 			_Pr._S.GlbVar['NixxisVar_contactID'] = { value: contactID, type: 'String' };
 
 			if ((contactRef == '' || typeof (contactRef) == 'undefined' || contactRef == 'undefined') && (contactID == '' || typeof (contactID) == 'undefined' || contactID == 'undefined')) {
-
 				alert('KEY_PLUGIN : ' + NixxisScript.KEY_PLUGIN + '\n' +
 					'contactID : ' + window.external.GetSessionValue('@ContactId'));
-
 				return false;
-
 			}
-
 			else {
-
 				//SetInternall Id on nixxis
-
 				var uri = baseUri + "?action=setinternalid&contact=" + contactID + "&id=" + contactRef;
 
 				$.ajax({
@@ -1116,30 +823,22 @@ var NixxisScript = {
 
 				return true;
 			};
-
 		},
 
 
 		SetInternalIdXXX: function (contactRef) {
-
 			var baseUri = NixxisScript.dataURI;
 			var contactID = window.external.GetSessionValue('@ContactId');
 
 			_Pr._S.GlbVar['NixxisVar_contactID'] = { value: contactID, type: 'String' };
 
 			if ((contactRef == '' || typeof (contactRef) == 'undefined' || contactRef == 'undefined') && (contactID == '' || typeof (contactID) == 'undefined' || contactID == 'undefined')) {
-
 				alert('KEY_PLUGIN : ' + NixxisScript.KEY_PLUGIN + '\n' +
 					'contactID : ' + window.external.GetSessionValue('@ContactId'));
-
 				return false;
-
 			}
-
 			else {
-
 				//SetInternall Id on nixxis
-
 				var uri = baseUri + "?action=setinternalid&contact=" + contactID + "&id=" + contactRef;
 
 				$.ajax({
@@ -1156,7 +855,6 @@ var NixxisScript = {
 					alert(message);
 					return false;
 				});
-
 				return true;
 			};
 
@@ -1178,7 +876,6 @@ var NixxisScript = {
 		CloseScriptGoReady: function () {
 			window.external.terminateContactAndGoReady();
 		}
-
 	},
 
 	Utilities: {
@@ -1208,11 +905,11 @@ var NixxisScript = {
 		// NixxisScript.Utilities.ToSqlDateTime() or NixxisScript.Utilities.ToSqlDateTime(datetime)
 		// Example 1:
 		// var sqlDT = NixxisScript.Utilities.ToSqlDateTime();
-		// sqlDT will be now datetime in sql format (yyyy-mm-dd hh:mm)
+		// sqlDT will return now date and time in sql format (yyyy-mm-ddThh:mm)
 		// Example 2 (_sp_100 is DateTime object):
 		// var datetime = _sp_100.val();
 		// var sqlDT = NixxisScript.Utilities.ToSqlDateTime(datetime);
-		// sqlDT will be datetime in sql format (yyyy-mm-dd hh:mm)
+		// sqlDT will be datetime in sql format (yyyy-mm-ddThh:mm)
 		ToSqlDateTime: function (jsdatetime) {
 			var jsdatetime;
 			if ((jsdatetime == '' || typeof (jsdatetime) == 'undefined' || jsdatetime == 'undefined') && (jsdatetime == '' || typeof (jsdatetime) == 'undefined' || jsdatetime == 'undefined')) {
@@ -1222,19 +919,20 @@ var NixxisScript = {
 				var day = ('0' + date.getDate()).slice(-2);
 				var hours = ('0' + date.getHours()).slice(-2);
 				var minutes = ('0' + date.getMinutes()).slice(-2);
-				return `${year}-${month}-${day} ${hours}:${minutes}`;
-			} else {
+				return `${year}-${month}-${day}T${hours}:${minutes}`;
+			}
+			else {
 				var date = new Date(jsdatetime);
 				var year = date.getFullYear();
 				var month = ('0' + (date.getMonth() + 1)).slice(-2);
 				var day = ('0' + date.getDate()).slice(-2);
 				var hours = ('0' + date.getHours()).slice(-2);
 				var minutes = ('0' + date.getMinutes()).slice(-2);
-				return `${year}-${month}-${day} ${hours}:${minutes}`;
-			};
+				return `${year}-${month}-${day}T${hours}:${minutes}`;
+			}
 		},
 
-		// Utilities to validate email
+		// Utilities to validate email (TESTING)
 		// If email is valide will return true otherwise false
 		// Example (_sp_100 is the input object):
 		// var e = _sp_100.val();
@@ -1250,15 +948,12 @@ var NixxisScript = {
 
 			// Check if email is empty
 			if (email === "") {
-
 				return false;
-
 			}
 
 			// Check if email is valid
 			var emailParts = email.split("@");
 			if (emailParts.length !== 2) {
-
 				return false;
 			}
 
@@ -1274,32 +969,27 @@ var NixxisScript = {
 
 			// Check local part for consecutive periods
 			if (localPart.includes("..")) {
-
 				return false;
 			}
 
 			// Check local part for leading or trailing period
 			if (localPart.startsWith(".") || localPart.endsWith(".")) {
-
 				return false;
 			}
 
 			// Check domain part for invalid characters
 			var domainPartRegex = /^[a-zA-Z0-9.-]+$/;
 			if (!domainPartRegex.test(domainPart)) {
-
 				return false;
 			}
 
 			// Check domain part for consecutive hyphens
 			if (domainPart.includes("--")) {
-
 				return false;
 			}
 
 			// Check domain part for leading or trailing hyphen
 			if (domainPart.startsWith("-") || domainPart.endsWith("-")) {
-
 				return false;
 			}
 
@@ -1307,7 +997,6 @@ var NixxisScript = {
 			var tldRegex = /^[a-zA-Z]{2,}$/;
 			var domainParts = domainPart.split(".");
 			if (domainParts.length < 2 || !tldRegex.test(domainParts[domainParts.length - 1])) {
-
 				return false;
 			}
 			// Email is valid
@@ -1329,7 +1018,6 @@ var NixxisScript = {
 			} catch (err) {
 				console.error('Oops, unable to copy', err);
 			}
-
 			document.body.removeChild(textArea);
 		},
 
