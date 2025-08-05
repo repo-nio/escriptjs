@@ -1,5 +1,5 @@
 {
-    "appURI": "",
-    "dataURI": "",
-    "host": ""
+    "appURI": "[AppServer[:8088]]",
+    "dataURI": "http[s]://[AppServer[:8088]]/data",
+    "host": "AppServer"
 }
