@@ -4,7 +4,7 @@
 	Description: 	This script is designed to integrate Nixxis Contact Suite 3.x with Seeasoftware's e-Scriptx script editor
 	Dependencies: 	NixxisClientScript.js
 	Author: 		Nixxis Integration Team
-	Version: 		v2.6.7a
+	Version: 		v2.6.9a
 	Last Update: 	2026-03-19
 	
 ******************************************************************************************************
@@ -51,14 +51,14 @@ NixxisDirectLink = true;
 
 let NixxisScript = {
 
-    KEY_PLUGIN: null,
+	KEY_PLUGIN: null,
 	appURI: "10.0.0.1:8088",
 	dataURI: "http://10.0.0.1:8088/data",
 	host: "10.0.0.1",
 
 	LastError: null,
 
-	Version: "2.6.7a",
+	Version: "2.6.9a",
 
 	//Common
 
@@ -99,22 +99,41 @@ let NixxisScript = {
 		 *	@return	:	bool						False for Error			
 		**/
 		NewVoiceCall: function (destination, hasOriginator, originator) {
-			let NewCall;
 			if (destination == '') {
 				return false;
-			} else if (hasOriginator && originator != '') {
-				NewCall = window.external.ExecuteCommand("VoiceTrialCall", destination, originator);
-				if (!NewCall) {
-					window.external.ExecuteCommand("VoiceNewCall", destination, originator);
-				}
-				return true;
-			} else {
-				NewCall = window.external.ExecuteCommand("VoiceTrialCall", destination);
-				if (!NewCall) {
-					window.external.ExecuteCommand("VoiceNewCall", destination);
-				}
+			}
+
+			if (window.VoiceRedial === true) {
+				NixxisScript.Voice.Redial(destination);
 				return true;
 			}
+
+			NixxisScript.Utilities.GetDispatcher('contact', '@@DisconnectReason').then(function (result) {
+				console.log(result);
+				if (typeof result === 'string') {
+					result = result.trim();
+				}
+
+				let NewCall;
+				if (result == null || result === '' || String(result).toLowerCase() === 'null') {
+					if (hasOriginator && originator != '') {
+						NewCall = window.external.ExecuteCommand("VoiceTrialCall", destination, originator);
+						if (!NewCall) {
+							window.external.ExecuteCommand("VoiceNewCall", destination, originator);
+						}
+					} else {
+						NewCall = window.external.ExecuteCommand("VoiceTrialCall", destination);
+						if (!NewCall) {
+							window.external.ExecuteCommand("VoiceNewCall", destination);
+						}
+					}
+				} else if (result == 'None') {
+					window.VoiceRedial = true;
+					NixxisScript.Voice.Redial(destination);
+				}
+			});
+
+			return true;
 		},
 
 		/**
@@ -123,16 +142,20 @@ let NixxisScript = {
 		 *			
 		**/
 		Redial: /** boolean */ function (destination) {
-			let Redial;
 			if (destination == '') {
 				return false;
-			} else {
-				Redial = window.external.ExecuteCommand("VoiceReconnectCall", destination);
-				if (!Redial) {
-					window.external.redial(destination, window.external.GetSessionValue('@ContactListId'), window.external.Activity);
-				}
-				return true;
 			}
+
+			if (window.VoiceRedial !== true) {
+				return NixxisScript.Voice.NewVoiceCall(destination);
+			}
+
+			let Redial = window.external.ExecuteCommand("VoiceReconnectCall", destination);
+			if (!Redial) {
+				window.external.redial(destination, window.external.GetSessionValue('@ContactListId'), window.external.Activity);
+			}
+
+			return true;
 		},
 
 
