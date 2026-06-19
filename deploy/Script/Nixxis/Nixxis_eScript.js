@@ -1,16 +1,16 @@
 /*******************************************************************************************************
 	E-Script X Integration Script
 	
-	Description: 	This script is designed to integrate Nixxis Contact Suite 3.x with Seeasoftware's e-Scriptx script editor
+	Description: 	This script is designed to integrate Nixxis Contact Suite 2.4.x/3.x with Seeasoftware's e-Scriptx script editor
 	Dependencies: 	NixxisClientScript.js
 	Author: 		Nixxis Integration Team
-	Version: 		v2.6.7b
-	Last Update: 	2026-04-23
+	Version: 		v2.6.9b
+	Last Update: 	2026-06-19
 	
 ******************************************************************************************************
 	
 	Changes:
-		2026-06-23 - As from v2.6.7b - NixxisScript.appURI, NixxisScript.dataURI, NixxisScript.host is stored in Nixxis/nixxis.config.json.
+		2025-05-21 - As from v2.6.3 - NixxisScript.appURI, NixxisScript.dataURI, NixxisScript.host is stored in Nixxis/nixxis.config.json.
 
 	Functions:
 		NixxisScript.Voice.NewVoiceCall(destination, hasOriginator, originator)
@@ -81,7 +81,7 @@ let NixxisScript = {
 
 	LastError: null,
 
-	Version: "2.6.7b",
+	Version: "2.6.9b",
 
 	//Common
 
@@ -122,22 +122,41 @@ let NixxisScript = {
 		 *	@return	:	bool						False for Error			
 		**/
 		NewVoiceCall: function (destination, hasOriginator, originator) {
-			let NewCall;
 			if (destination == '') {
 				return false;
-			} else if (hasOriginator && originator != '') {
-				NewCall = window.external.ExecuteCommand("VoiceTrialCall", destination, originator);
-				if (!NewCall) {
-					window.external.ExecuteCommand("VoiceNewCall", destination, originator);
-				}
-				return true;
-			} else {
-				NewCall = window.external.ExecuteCommand("VoiceTrialCall", destination);
-				if (!NewCall) {
-					window.external.ExecuteCommand("VoiceNewCall", destination);
-				}
+			}
+
+			if (window.VoiceRedial === true) {
+				NixxisScript.Voice.Redial(destination);
 				return true;
 			}
+
+			NixxisScript.Utilities.GetDispatcher('contact', '@@DisconnectReason').then(function (result) {
+				console.log(result);
+				if (typeof result === 'string') {
+					result = result.trim();
+				}
+
+				let NewCall;
+				if (result == null || result === '' || String(result).toLowerCase() === 'null') {
+					if (hasOriginator && originator != '') {
+						NewCall = window.external.ExecuteCommand("VoiceTrialCall", destination, originator);
+						if (!NewCall) {
+							window.external.ExecuteCommand("VoiceNewCall", destination, originator);
+						}
+					} else {
+						NewCall = window.external.ExecuteCommand("VoiceTrialCall", destination);
+						if (!NewCall) {
+							window.external.ExecuteCommand("VoiceNewCall", destination);
+						}
+					}
+				} else if (result == 'None') {
+					window.VoiceRedial = true;
+					NixxisScript.Voice.Redial(destination);
+				}
+			});
+
+			return true;
 		},
 
 		/**
@@ -146,16 +165,20 @@ let NixxisScript = {
 		 *			
 		**/
 		Redial: /** boolean */ function (destination) {
-			let Redial;
 			if (destination == '') {
 				return false;
-			} else {
-				Redial = window.external.ExecuteCommand("VoiceReconnectCall", destination);
-				if (!Redial) {
-					window.external.redial(destination, window.external.GetSessionValue('@ContactListId'), window.external.Activity);
-				}
-				return true;
 			}
+			
+			if (window.VoiceRedial !== true) {
+				return NixxisScript.Voice.NewVoiceCall(destination);
+			}
+
+			let Redial = window.external.ExecuteCommand("VoiceReconnectCall", destination);
+			if (!Redial) {
+				window.external.redial(destination, window.external.GetSessionValue('@ContactListId'), window.external.Activity);
+			}
+			
+			return true;
 		},
 
 
@@ -555,7 +578,7 @@ let NixxisScript = {
 					NixxisDirectLink.serviceUrl = serviceUrl.replace("/data", "/agent");
 				}
 				else {
-					alert("Failed to load configuration.");
+					console.error("Failed to load configuration or in preview in editor mode.");
 				}
 			});
 
@@ -729,8 +752,14 @@ let NixxisScript = {
 		 * 			const result = await NixxisScript.Common.CreateContextData('campaignId', `<campaigndata><userfield1>UserData1</userfield1></campaigndata><systemdata><systemfield1>SystemData1</systemfield1></systemdata>`);
 		 * 			console.log(result);
 		 * 		}
+		 * 
+		 * 	@example using KpUpdate = false (will not update KEY_PLUGIN global variables):
+		 * 		async function myFunc() {
+		 * 			const result = await NixxisScript.Common.CreateContextData('campaignId', `<campaigndata><userfield1>UserData1</userfield1></campaigndata><systemdata><systemfield1>SystemData1</systemfield1></systemdata>`, false);
+		 * 			console.log(result);
+		 * 		}
 		**/
-		CreateContextData: function (campaignId, ContextData) {
+		CreateContextData: function (campaignId, ContextData, KpUpdate = true) {
 			const baseUri = NixxisScript.dataURI;
 			return (async function () {
 				if ((campaignId != '' || typeof (campaignId) != 'undefined' || campaignId != 'undefined' || ContextData != '' || typeof (ContextData) != 'undefined' || ContextData != 'undefined')) {
@@ -757,10 +786,11 @@ let NixxisScript = {
 						let contactRef = toReturn.ref;
 
 						console.log(contactRef);
-
-						NixxisContactLink.contactlistId = contactRef;
-						_Act_Manager.Prepare.setGlobal('KEY_PLUGIN', contactRef);
-						NixxisScript.KEY_PLUGIN = contactRef;
+						if (KpUpdate) {
+							NixxisContactLink.contactlistId = contactRef;
+							_Act_Manager.Prepare.setGlobal('KEY_PLUGIN', contactRef);
+							NixxisScript.KEY_PLUGIN = contactRef;
+						}
 
 						//await NixxisScript.Common.SetInternalIdXXX(contactRef);
 
@@ -1081,6 +1111,7 @@ let NixxisScript = {
 
 		/**
 		 NixxisScript.Utilities.GetDispatcher(item, key, id)
+		 Add allowedOrigins="*" in Http.config to allow cross-origin requests from the browser.
 		 @param: item: string - contact or agent
 		 @param: key: string - The key to get the value for.
 		 @param: id: string - contact id or agent id
