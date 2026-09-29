@@ -1,5 +1,6 @@
 {
-    "appURI": "[AppServer[:8088]]",
-    "dataURI": "http[s]://[AppServer[:8088]]/data",
-    "host": "AppServer"
+    "appURI": "[NixxisAppServer[:8088]]",
+    "dataURI": "http[s]://[NixxisAppServer[:8088]]/data",
+    "host": "[NixxisAppServer]",
+    "apiKeys": ""
 }

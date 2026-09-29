@@ -4,13 +4,14 @@
 	Description: 	This script is designed to integrate Nixxis Contact Suite 2.4.x/3.x with Seeasoftware's e-Scriptx script editor
 	Dependencies: 	NixxisClientScript.js
 	Author: 		Nixxis Integration Team
-	Version: 		v2.6.9b
-	Last Update: 	2026-06-19
+	Version: 		v2.7b
+	Last Update: 	2026-09-29
 	
 ******************************************************************************************************
 	
 	Changes:
 		2025-05-21 - As from v2.6.3 - NixxisScript.appURI, NixxisScript.dataURI, NixxisScript.host is stored in Nixxis/nixxis.config.json.
+		2026-09-30 - NixxisScript.apiKeys is stored in Nixxis/nixxis.config.json and used in the API calls.
 
 	Functions:
 		NixxisScript.Voice.NewVoiceCall(destination, hasOriginator, originator)
@@ -58,6 +59,7 @@ let NixxisScript = {
 	appURI: null,
 	dataURI: null,
 	host: null,
+	apiKeys: null,
 
 	LoadConfig: function (callback) {
 		fetch('Nixxis/nixxis.config.json')
@@ -71,6 +73,7 @@ let NixxisScript = {
 				NixxisScript.appURI = config.appURI;
 				NixxisScript.dataURI = config.dataURI;
 				NixxisScript.host = config.host;
+				NixxisScript.apiKeys = config.apiKeys;
 				if (typeof callback === 'function') callback();
 			})
 			.catch(error => {
@@ -81,7 +84,7 @@ let NixxisScript = {
 
 	LastError: null,
 
-	Version: "2.6.9b",
+	Version: "2.7b",
 
 	//Common
 
@@ -138,7 +141,10 @@ let NixxisScript = {
 				}
 
 				let NewCall;
-				if (result == null || result === '' || String(result).toLowerCase() === 'null') {
+				if (result == 'None') {
+					window.VoiceRedial = true;
+					NixxisScript.Voice.Redial(destination);
+				} else {
 					if (hasOriginator && originator != '') {
 						NewCall = window.external.ExecuteCommand("VoiceTrialCall", destination, originator);
 						if (!NewCall) {
@@ -150,9 +156,6 @@ let NixxisScript = {
 							window.external.ExecuteCommand("VoiceNewCall", destination);
 						}
 					}
-				} else if (result == 'None') {
-					window.VoiceRedial = true;
-					NixxisScript.Voice.Redial(destination);
 				}
 			});
 
@@ -168,7 +171,7 @@ let NixxisScript = {
 			if (destination == '') {
 				return false;
 			}
-			
+
 			if (window.VoiceRedial !== true) {
 				return NixxisScript.Voice.NewVoiceCall(destination);
 			}
@@ -177,7 +180,7 @@ let NixxisScript = {
 			if (!Redial) {
 				window.external.redial(destination, window.external.GetSessionValue('@ContactListId'), window.external.Activity);
 			}
-			
+
 			return true;
 		},
 
@@ -704,7 +707,12 @@ let NixxisScript = {
 					const uri = "" + baseUri + "?action=createContextData&activity=" + activityId_ + "";
 					//alert(uri);
 					try {
-						const response = await fetch(uri, { method: "GET" });
+						const response = await fetch(uri, {
+							method: "GET",
+							headers: {
+								"Authorization": "Bearer " + NixxisScript.apiKeys
+							}
+						});
 						if (!response.ok) {
 							throw { status: response.status, statusText: response.statusText };
 						}
@@ -768,7 +776,8 @@ let NixxisScript = {
 					const settings = {
 						method: "POST",
 						headers: {
-							"Content-Type": "application/xml"
+							"Content-Type": "application/xml",
+							"Authorization": "Bearer " + NixxisScript.apiKeys
 						},
 						body: data
 					};
@@ -826,7 +835,8 @@ let NixxisScript = {
 				const settings = {
 					method: "POST",
 					headers: {
-						"Content-Type": "application/xml"
+						"Content-Type": "application/xml",
+						"Authorization": "Bearer " + NixxisScript.apiKeys
 					},
 					body: data
 				};
@@ -874,7 +884,10 @@ let NixxisScript = {
 				const uri = baseUri + "?action=setinternalid&contact=" + contactID + "&id=" + contactRef;
 
 				fetch(uri, {
-					method: "GET"
+					method: "GET",
+					headers: {
+						"Authorization": "Bearer " + NixxisScript.apiKeys
+					}
 				})
 					.then(response => {
 						if (!response.ok) {
@@ -917,7 +930,12 @@ let NixxisScript = {
 					const uri = baseUri + "?action=setinternalid&contact=" + contactID + "&id=" + contactRef;
 
 					try {
-						const response = await fetch(uri, { method: "GET" });
+						const response = await fetch(uri, {
+							method: "GET",
+							headers: {
+								"Authorization": "Bearer " + NixxisScript.apiKeys
+							}
+						});
 						if (!response.ok) {
 							throw { status: response.status, statusText: response.statusText };
 						}
@@ -1147,7 +1165,12 @@ let NixxisScript = {
 				if (item && key && resolvedContactId) {
 					const uri = `${dispatcher}?action=get&items=${item}&id=${resolvedContactId}&key=${key}&fmt=text`;
 					try {
-						const response = await fetch(uri);
+						const response = await fetch(uri, {
+							method: "GET",
+							headers: {
+								"Authorization": "Bearer " + NixxisScript.apiKeys
+							}
+						});
 						if (!response.ok) {
 							throw new Error(`HTTP error! status: ${response.status}`);
 						}
